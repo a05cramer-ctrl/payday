@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAYDAY</title>
+<meta name="description" content="Creator fees on the PAYDAY/NVDA pair accrue to a single address and are sent out to holders in NVDA on NVIDIA's dividend payment date.">
+<link rel="icon" type="image/png" sizes="128x128" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050607;
+    --text: #E8EAE9;
+    --accent: #00D26A;
+    --secondary: #7A8280;
+    --panel: #0A0D0E;
+    --panel-border: #1A2220;
+    --panel-top: rgba(255, 255, 255, 0.06);
+    --hairline: #171B1C;
+    --sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --gutter: 20px;
+    --pad-section: 40px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    position: relative;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ---------- depth layers ---------- */
+
+  .glow {
+    position: fixed;
+    z-index: 0;
+    width: 120vmax;
+    height: 120vmax;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(0, 210, 106, 0.10) 0%, rgba(0, 210, 106, 0.06) 40%, transparent 70%);
+    filter: blur(90px);
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .glow-tr {
+    top: -60vmax;
+    right: -45vmax;
+    animation: drift-tr 24s ease-in-out infinite alternate;
+  }
+
+  .glow-bl {
+    bottom: -65vmax;
+    left: -50vmax;
+    animation: drift-bl 24s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift-tr {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-3%, 4%, 0); }
+  }
+
+  @keyframes drift-bl {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(4%, -3%, 0); }
+  }
+
+  .noise {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  main, .site-header, .site-footer { position: relative; z-index: 1; }
+
+  .mono, .num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+  }
+
+  /* ---------- header ---------- */
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: 56px;
+    background: rgba(5, 6, 7, 0.72);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .site-header .container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .wordmark {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .header-readout {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 13px;
+    color: var(--secondary);
+    white-space: nowrap;
+  }
+
+  .header-readout .dot { padding: 0 8px; color: var(--hairline); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .x-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    color: var(--text);
+    transition: color 200ms ease, border-color 200ms ease;
+  }
+
+  .x-link svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+  }
+
+  .x-link:hover,
+  .x-link:focus-visible {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ---------- sections ---------- */
+
+  .section { border-bottom: 1px solid var(--hairline); }
+
+  .section > .container {
+    padding-top: var(--pad-section);
+    padding-bottom: var(--pad-section);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 28px;
+    font-weight: 500;
+  }
+
+  .section-head .idx {
+    flex: none;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .section-head .label {
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #FFFFFF;
+  }
+
+  /* ---------- hero ---------- */
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 32px;
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: calc(var(--pad-section) + 16px) var(--gutter) var(--pad-section);
+  }
+
+  .hero-art {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .hero-art::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 115%;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(0, 210, 106, 0.22) 0%, rgba(0, 210, 106, 0.10) 45%, transparent 72%);
+    filter: blur(60px);
+    pointer-events: none;
+    animation: drift-art 24s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift-art {
+    from { transform: translate(-50%, -50%); }
+    to { transform: translate(-47%, -53%); }
+  }
+
+  .hero-img {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 80%);
+    mask-image: radial-gradient(ellipse at center, black 55%, transparent 80%);
+    animation: float 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes float {
+    from { transform: translateY(0); }
+    to { transform: translateY(-12px); }
+  }
+
+  .hero-copy { min-width: 0; }
+
+  /* emerald rule under the hero */
+
+  .hero-rule {
+    position: relative;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 210, 106, 0.9) 50%, transparent 100%);
+  }
+
+  .hero-rule::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -7px;
+    height: 16px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 210, 106, 0.55) 50%, transparent 100%);
+    filter: blur(14px);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--secondary);
+  }
+
+  .countdown {
+    margin: 14px 0 0;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: clamp(64px, 9vw, 150px);
+    font-weight: 500;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    text-align: left;
+    color: #FFFFFF;
+  }
+
+  .countdown #cd-sec { color: var(--accent); }
+
+  .hero-sub {
+    margin: 22px 0 0;
+    max-width: 46ch;
+    font-size: 17px;
+    color: var(--secondary);
+  }
+
+  /* ---------- 01 mechanic ---------- */
+
+  .steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-top: 1px solid var(--hairline);
+    font-size: 18px;
+    line-height: 1.45;
+  }
+
+  .steps li:first-child { border-top: 0; padding-top: 0; }
+
+  .steps .n {
+    flex: none;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--accent);
+  }
+
+  .note {
+    margin: 24px 0 0;
+    font-size: 14px;
+    color: var(--secondary);
+  }
+
+  /* ---------- 02 stat strip ---------- */
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 var(--panel-top);
+  }
+
+  .stat {
+    min-width: 0;
+    padding: 18px 16px;
+    border-top: 1px solid var(--hairline);
+    border-left: 1px solid var(--hairline);
+  }
+
+  .stat:nth-child(-n+2) { border-top: 0; }
+  .stat:nth-child(odd) { border-left: 0; }
+
+  .stat-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--secondary);
+  }
+
+  .stat-value {
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  /* ---------- 03 position ---------- */
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 var(--panel-top);
+    padding: 24px 20px;
+  }
+
+  .btn-outline {
+    display: inline-block;
+    padding: 12px 20px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .panel-note {
+    margin: 14px 0 0;
+    font-size: 12px;
+    color: var(--secondary);
+  }
+
+  #position { display: none; }
+
+  .rows {
+    margin-top: 24px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .row-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--secondary);
+  }
+
+  .row-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 15px;
+  }
+
+  /* ---------- 04 payments ---------- */
+
+  .table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 13px;
+    text-align: left;
+  }
+
+  thead th {
+    padding: 10px 16px 10px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--secondary);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 14px 16px 14px 0;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+
+  thead th:last-child, tbody td:last-child { padding-right: 0; }
+
+  .muted { color: var(--secondary); }
+
+  /* ---------- 05 calendar ---------- */
+
+  .calendar { border-top: 1px solid var(--hairline); }
+
+  .calendar .row-label { letter-spacing: 0.14em; }
+
+  .source {
+    margin: 20px 0 0;
+    font-size: 12px;
+    color: var(--secondary);
+  }
+
+  /* ---------- 06 risk ---------- */
+
+  .risk p {
+    margin: 0 0 14px;
+    max-width: 68ch;
+    font-size: 14px;
+    color: var(--secondary);
+  }
+
+  .risk p:last-child { margin-bottom: 0; }
+
+  /* ---------- footer ---------- */
+
+  .site-footer > .container {
+    padding-top: 28px;
+    padding-bottom: 40px;
+  }
+
+  .site-footer .row { border-bottom: 0; padding: 0; }
+
+  #footer-ca {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--secondary);
+    overflow-wrap: anywhere;
+  }
+
+  /* ---------- scroll reveal ---------- */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 600ms ease, transform 600ms ease;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ---------- >= 720px ---------- */
+
+  @media (min-width: 720px) {
+    :root {
+      --gutter: 28px;
+      --pad-section: 64px;
+    }
+
+    .stats { grid-template-columns: repeat(4, 1fr); }
+    .stat { border-top: 0; }
+    .stat:nth-child(odd) { border-left: 1px solid var(--hairline); }
+    .stat:first-child { border-left: 0; }
+
+    .stat { padding: 22px 20px; }
+    .panel { padding: 32px; }
+    table { min-width: 0; }
+  }
+
+  /* ---------- >= 900px: hero goes side by side ---------- */
+
+  @media (min-width: 900px) {
+    .hero { min-height: 100vh; }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 0;
+      min-height: 100vh;
+      padding-top: 56px;
+      padding-bottom: 0;
+      padding-right: 0;
+    }
+
+    .hero-copy {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .hero-art {
+      grid-column: 2;
+      grid-row: 1;
+      justify-content: flex-end;
+    }
+
+    .hero-img {
+      width: auto;
+      height: 85vh;
+      max-width: none;
+      margin-right: -14vw;
+    }
+
+    .hero-art::before {
+      left: 58%;
+      width: 85vh;
+    }
+  }
+
+  /* ---------- reduced motion ---------- */
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .reveal {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow glow-tr" aria-hidden="true"></div>
+<div class="glow glow-bl" aria-hidden="true"></div>
+<div class="noise" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container">
+    <span class="wordmark">PAYDAY</span>
+    <div class="header-right">
+      <div class="header-readout">
+        <span id="hdr-nvda">&mdash;</span><span class="dot">&bull;</span><span id="hdr-next">&mdash;</span>
+      </div>
+      <a class="x-link" href="https://x.com/payday" target="_blank" rel="noopener" aria-label="PAYDAY on X">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-art">
+        <img class="hero-img" src="hero.png" alt="" width="1024" height="1024">
+      </div>
+      <div class="hero-copy">
+        <p class="hero-eyebrow">Next payday</p>
+        <div class="countdown" id="countdown"><span id="cd-main">&mdash;</span><span id="cd-sec"></span></div>
+        <p class="hero-sub">1 October 2026 &mdash; the day NVIDIA pays its shareholders.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="hero-rule" aria-hidden="true"></div>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">01 &mdash;</span> <span class="label">The mechanic</span></h2>
+      <ol class="steps">
+        <li><span class="n">01</span><span>Creator fees on the PAYDAY/NVDA pair accrue to a single address.</span></li>
+        <li><span class="n">02</span><span>On NVIDIA's dividend payment date they are sent out to holders in NVDA.</span></li>
+        <li><span class="n">03</span><span>Every payment is published below with its transaction hash.</span></li>
+      </ol>
+      <p class="note">Payments are sent manually. Nothing is automated and nothing is claimed to be.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">02 &mdash;</span> <span class="label">This cycle</span></h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">NVDA / USD</div>
+          <div class="stat-value" id="stat-nvda">&mdash;</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Holders</div>
+          <div class="stat-value" id="stat-holders">&mdash;</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Accrued this cycle</div>
+          <div class="stat-value" id="stat-accrued">&mdash;</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Next ex-div</div>
+          <div class="stat-value" id="stat-exdiv">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">03 &mdash;</span> <span class="label">Your position</span></h2>
+      <div class="panel">
+        <button class="btn-outline" id="connect" type="button">Connect wallet</button>
+        <p class="panel-note" id="wallet-msg" hidden>no wallet detected</p>
+        <p class="panel-note">Read-only. No approvals, no deposits, no signatures that move anything.</p>
+        <div id="position">
+          <div class="rows">
+            <div class="row">
+              <span class="row-label">Your balance</span>
+              <span class="row-value" id="pos-balance">&mdash;</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Share of supply</span>
+              <span class="row-value" id="pos-share">&mdash;</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Received to date</span>
+              <span class="row-value" id="pos-received">&mdash;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">04 &mdash;</span> <span class="label">Payments</span></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Amount NVDA</th>
+              <th scope="col">Recipients</th>
+              <th scope="col">Transaction</th>
+            </tr>
+          </thead>
+          <tbody id="payments">
+            <tr>
+              <td class="muted" colspan="4">loading</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">05 &mdash;</span> <span class="label">Calendar</span></h2>
+      <div class="calendar">
+        <div class="row">
+          <span class="row-label">Ex-dividend</span>
+          <span class="row-value">10 September 2026</span>
+        </div>
+        <div class="row">
+          <span class="row-label">Payment</span>
+          <span class="row-value">1 October 2026</span>
+        </div>
+      </div>
+      <p class="source">Dates as published in NVIDIA's dividend schedule.</p>
+    </div>
+  </section>
+
+  <section class="section risk">
+    <div class="container">
+      <h2 class="section-head"><span class="idx">06 &mdash;</span> <span class="label">Risk</span></h2>
+      <p>PAYDAY is a meme coin. It has no utility, no claim on any company's earnings, and no promise of value. Buy it only with money you are willing to lose entirely.</p>
+      <p>Payments are discretionary. They depend on creator fees actually accruing, and in any given cycle the amount sent out may be zero.</p>
+      <p>Nothing here is financial advice, an offer, or a solicitation to buy anything.</p>
+      <p>PAYDAY is not affiliated with, endorsed by, or connected to NVIDIA Corporation or Robinhood Markets, Inc. Both names are used only to describe the schedule this coin follows.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="row">
+      <span class="row-label">Contract</span>
+      <span id="footer-ca">&mdash;</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ---- fill these in ---- */
+  const TOKEN = "";      // PAYDAY token address
+  const PAIR = "";       // PAYDAY/NVDA pair address
+  const FEE_ADDR = "";   // address creator fees accrue to
+  const NVDA_TOKEN = ""; // NVDA token address
+
+  const API = "https://robinhoodchain.blockscout.com/api/v2";
+  const PAYMENT_DATE = Date.parse("2026-10-01T00:00:00Z");
+  const REFRESH_MS = 30000;
+  const UNAVAILABLE = "unavailable";
+
+  const el = (id) => document.getElementById(id);
+
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
+
+  function tick() {
+    const left = Math.max(0, PAYMENT_DATE - Date.now());
+    const s = Math.floor(left / 1000);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+
+    el("cd-main").textContent = d + "d " + pad(h) + "h " + pad(m) + "m ";
+    el("cd-sec").textContent = pad(sec) + "s";
+    el("hdr-next").textContent = d + "d " + pad(h) + "h";
+  }
+
+  async function get(path) {
+    const res = await fetch(API + path, { headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  async function token(address) {
+    if (!address) throw new Error("address not set");
+    return get("/tokens/" + address);
+  }
+
+  async function loadNvda() {
+    try {
+      const rate = Number((await token(NVDA_TOKEN)).exchange_rate);
+      if (!isFinite(rate)) throw new Error("no exchange rate");
+      const usd = "$" + rate.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      el("hdr-nvda").textContent = usd;
+      el("stat-nvda").textContent = usd;
+    } catch (err) {
+      el("hdr-nvda").textContent = UNAVAILABLE;
+      el("stat-nvda").textContent = UNAVAILABLE;
+    }
+  }
+
+  async function loadHolders() {
+    try {
+      const count = Number((await token(TOKEN)).holders_count);
+      if (!isFinite(count)) throw new Error("no holder count");
+      el("stat-holders").textContent = count.toLocaleString("en-US");
+    } catch (err) {
+      el("stat-holders").textContent = UNAVAILABLE;
+    }
+  }
+
+  /* ---- read-only wallet lookup ---- */
+
+  const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+  function truncate(addr) {
+    return addr.slice(0, 6) + "\u2026" + addr.slice(-4);
+  }
+
+  function fromRaw(raw, decimals) {
+    return Number(raw) / Math.pow(10, Number(decimals) || 0);
+  }
+
+  function amount(n, max) {
+    return n.toLocaleString("en-US", { maximumFractionDigits: max });
+  }
+
+  async function loadBalance(addr) {
+    if (!TOKEN) throw new Error("TOKEN not set");
+    const balances = await get("/addresses/" + addr + "/token-balances");
+    const entry = (Array.isArray(balances) ? balances : []).find(
+      (b) => b.token && same(b.token.address || b.token.address_hash, TOKEN)
+    );
+
+    if (!entry) return { balance: 0, share: 0 };
+
+    const decimals = entry.token.decimals;
+    const balance = fromRaw(entry.value, decimals);
+    const supply = fromRaw(entry.token.total_supply, decimals);
+
+    return { balance: balance, share: supply > 0 ? (balance / supply) * 100 : 0 };
+  }
+
+  async function loadReceived(addr) {
+    if (!FEE_ADDR || !NVDA_TOKEN) throw new Error("FEE_ADDR or NVDA_TOKEN not set");
+
+    let path = "/addresses/" + addr + "/token-transfers?type=ERC-20&token=" + NVDA_TOKEN;
+    let total = 0;
+
+    for (let page = 0; page < 20 && path; page++) {
+      const data = await get(path);
+      const items = (data && data.items) || [];
+
+      for (const t of items) {
+        const from = t.from && t.from.hash;
+        const to = t.to && t.to.hash;
+        if (!same(from, FEE_ADDR) || !same(to, addr)) continue;
+        const value = t.total ? t.total.value : t.value;
+        const decimals = t.total && t.total.decimals != null ? t.total.decimals : t.token && t.token.decimals;
+        total += fromRaw(value, decimals);
+      }
+
+      const next = data && data.next_page_params;
+      path = next
+        ? "/addresses/" + addr + "/token-transfers?type=ERC-20&token=" + NVDA_TOKEN + "&" + new URLSearchParams(next)
+        : null;
+    }
+
+    return total;
+  }
+
+  async function connect() {
+    const provider = window.ethereum;
+
+    if (!provider) {
+      el("wallet-msg").hidden = false;
+      return;
+    }
+
+    el("wallet-msg").hidden = true;
+
+    let addr;
+    try {
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      addr = accounts && accounts[0];
+    } catch (err) {
+      return;
+    }
+    if (!addr) return;
+
+    el("connect").textContent = truncate(addr);
+    el("position").style.display = "block";
+
+    try {
+      const position = await loadBalance(addr);
+      el("pos-balance").textContent = amount(position.balance, 4);
+      el("pos-share").textContent = position.share.toFixed(2) + "%";
+    } catch (err) {
+      el("pos-balance").textContent = UNAVAILABLE;
+      el("pos-share").textContent = UNAVAILABLE;
+    }
+
+    try {
+      el("pos-received").textContent = amount(await loadReceived(addr), 6) + " NVDA";
+    } catch (err) {
+      el("pos-received").textContent = UNAVAILABLE;
+    }
+  }
+
+  el("connect").addEventListener("click", connect);
+  if (!window.ethereum) el("wallet-msg").hidden = false;
+
+  el("stat-exdiv").textContent = "10 September 2026";
+
+  /* ---- scroll reveal ---- */
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!reducedMotion && "IntersectionObserver" in window) {
+    const targets = document.querySelectorAll("main > .section, .site-footer > .container");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.1 }
+    );
+
+    for (const target of targets) {
+      target.classList.add("reveal");
+      observer.observe(target);
+    }
+  }
+
+  tick();
+  setInterval(tick, 1000);
+
+  loadNvda();
+  loadHolders();
+  setInterval(loadNvda, REFRESH_MS);
+  setInterval(loadHolders, REFRESH_MS);
+</script>
+
+</body>
+</html>
